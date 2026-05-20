@@ -16,57 +16,51 @@
 
 ---
 
-## Required Environment Variables
+## Step 1 — Hostinger Supabase Wizard
 
-Add these in: **hPanel → Websites → your domain → Node.js Apps → Environment Variables**
+When Hostinger shows a Supabase integration wizard, enter:
 
-### 1. Supabase — Client-side (Public — starts with `NEXT_PUBLIC_`)
+| Wizard Field | What to Paste | Maps to Env Var |
+|-------------|---------------|-----------------|
+| **Project URL** | `https://xxxxx.supabase.co` (from Supabase Settings → API) | `SUPABASE_URL` |
+| **Anon key** | `eyJhbGciOi...` (from Supabase Settings → API → Anon Key) | `SUPABASE_ANON_KEY` |
 
-| Variable | Where to Get It |
-|----------|----------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → **Project Settings → API → Project URL** |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Dashboard → **Project Settings → API → Anon Key** (this is the anon/public key) |
-
-> ⚠️ The code uses `PUBLISHABLE_KEY` not `ANON_KEY`. Both mean the same thing (Supabase anon key).  
-> Use the exact name `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — do not rename it.
-
-### 2. Supabase — Server-side (Private — never expose to browser)
-
-| Variable | Where to Get It |
-|----------|----------------|
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → **Project Settings → API → service_role key** (secret!) |
-
-> ⚠️ This key bypasses Row Level Security. Only the server-side RPC route uses it.
-
-### 3. Node.js Runtime
-
-| Variable | Value |
-|----------|-------|
-| `NODE_ENV` | `production` |
-
-### 4. ZATCA — Optional (Only if ZATCA e-invoicing is active)
-
-| Variable | Where to Get It | Value |
-|----------|----------------|-------|
-| `ZATCA_DEVICE_KEY_ENCRYPTION_SECRET` | Generate a strong random string (min 16 characters) | `your-encryption-secret` |
-| `ZATCA_ENVIRONMENT` | Always `simulation` initially | `simulation` |
-
-> ⚠️ Do not set `ZATCA_ENVIRONMENT=production` until ZATCA onboarding is complete.
+The app supports both `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_ANON_KEY` — you only need one.
 
 ---
 
-## Summary: All Variables at a Glance
+## Step 2 — Manually Add These Missing Env Vars
 
-Add exactly these 5-6 variables in Hostinger hPanel:
+After the wizard, go to **hPanel → Websites → your domain → Node.js Apps → Environment Variables** and add:
+
+### Required (add manually — wizard does not create these)
+
+| Variable | What to Enter | Notes |
+|----------|--------------|-------|
+| `SUPABASE_SERVICE_ROLE_KEY` | From Supabase → Settings → API → service_role key | **Server-only secret**. Never expose to browser. |
+| `NODE_ENV` | `production` | |
+
+### Optional (only if using ZATCA e-invoicing)
+
+| Variable | What to Enter |
+|----------|--------------|
+| `ZATCA_ENVIRONMENT` | `simulation` (never `production` until ZATCA onboarding is complete) |
+| `ZATCA_DEVICE_KEY_ENCRYPTION_SECRET` | A strong random string (min 16 characters) |
+
+---
+
+## Summary: All Variables Hostinger Should Have
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOi...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...         (secret!)
-NODE_ENV=production
-ZATCA_ENVIRONMENT=simulation                    (optional)
-ZATCA_DEVICE_KEY_ENCRYPTION_SECRET=...          (optional)
+SUPABASE_URL=https://xxxxx.supabase.co              ← set by wizard
+SUPABASE_ANON_KEY=eyJhbGciOi...                     ← set by wizard
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...              ← add manually (secret!)
+NODE_ENV=production                                   ← add manually
+ZATCA_ENVIRONMENT=simulation                          ← add manually (optional)
+ZATCA_DEVICE_KEY_ENCRYPTION_SECRET=...                ← add manually (optional)
 ```
+
+**Note:** `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are optional. The app falls back to `SUPABASE_URL` / `SUPABASE_ANON_KEY` if the `NEXT_PUBLIC_*` versions are not set.
 
 ---
 
@@ -102,7 +96,7 @@ ZATCA_DEVICE_KEY_ENCRYPTION_SECRET=...          (optional)
 
 ## Security Rules
 
-- ✅ `NEXT_PUBLIC_*` = safe to expose to browser
+- ✅ `NEXT_PUBLIC_*` / `SUPABASE_URL` / `SUPABASE_ANON_KEY` = safe to expose to browser
 - ❌ `SUPABASE_SERVICE_ROLE_KEY` = never put in `NEXT_PUBLIC_*`
 - ❌ `ZATCA_DEVICE_KEY_ENCRYPTION_SECRET` = never put in `NEXT_PUBLIC_*`
 - ❌ Never commit `.env` to git

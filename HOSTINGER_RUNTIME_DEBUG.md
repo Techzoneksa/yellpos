@@ -18,12 +18,12 @@ Add these in Hostinger hPanel → Website → App → Node.js App → Environmen
 
 | Variable | Required | Type | Notes |
 |----------|----------|------|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Required | Public (NEXT_PUBLIC) | Supabase project URL from Settings → API |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅ Required | Public (NEXT_PUBLIC) | Supabase anon/publishable key |
+| `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` | ✅ Required | Public | Hostinger wizard sets `SUPABASE_URL`; app also accepts `NEXT_PUBLIC_SUPABASE_URL` |
+| `SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅ Required | Public | Hostinger wizard sets `SUPABASE_ANON_KEY`; app also accepts `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ Required | Server-only | Supabase service_role key (secret!) |
+| `NODE_ENV` | ✅ Required | Server-only | Set to `production` |
 | `ZATCA_DEVICE_KEY_ENCRYPTION_SECRET` | ⚠️ If ZATCA used | Server-only | Encryption secret for ZATCA keys |
 | `ZATCA_ENVIRONMENT` | ⚠️ If ZATCA used | Server-only | `simulation` or `production` |
-| `NODE_ENV` | ✅ Required | Server-only | Set to `production` |
 | `PORT` | ❌ Optional | Server-only | Hostinger provides this automatically |
 
 **How to add:**
@@ -32,6 +32,10 @@ Add these in Hostinger hPanel → Website → App → Node.js App → Environmen
 3. Find your app → Environment Variables
 4. Add each variable name and value
 5. Click Save → Redeploy
+
+**Alias resolution order:**
+- Supabase URL: `NEXT_PUBLIC_SUPABASE_URL` → `SUPABASE_URL` (falls back)
+- Supabase key: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` → `SUPABASE_PUBLISHABLE_KEY` → `SUPABASE_ANON_KEY` (falls back)
 
 ## Where to Check Logs
 
@@ -44,9 +48,9 @@ If the app crashes, always check **Application Logs** first — they show Node.j
 ## Common Errors & Fixes
 
 ### "This page couldn't load"
-**Cause:** Missing environment variables (usually `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
+**Cause:** Missing environment variables (usually `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
 
-**Fix:** Add all required env vars in hPanel → Environment Variables, save, and redeploy.
+**Fix:** The Hostinger Supabase wizard should set `SUPABASE_URL` and `SUPABASE_ANON_KEY`. If the wizard didn't run, add them manually in hPanel → Environment Variables, save, and redeploy.
 
 ### 502 Bad Gateway
 **Cause 1:** App crashed on startup — check Application Logs.
