@@ -836,7 +836,7 @@ export default function ReportsHub() {
         brand: lang === "ar" ? settings.settings.brand_name_ar : settings.settings.brand_name_en,
         branch: lang === "ar" ? settings.settings.branch_ar : settings.settings.branch_en,
       }));
-    } catch {}
+    } catch { /* data format differs — non-critical */ }
   }, [settings, lang]);
 
   // Cashier dropdown choices come from listZReports' unique cashiers (best

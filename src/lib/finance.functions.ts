@@ -390,7 +390,7 @@ export const listJournalEntries = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const ids = (entries ?? []).map((e) => e.id);
-    let linesByEntry = new Map<string, any[]>();
+    const linesByEntry = new Map<string, any[]>();
     if (ids.length) {
       const { data: lines } = await supabaseAdmin
         .from("journal_lines")

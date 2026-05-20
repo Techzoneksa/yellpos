@@ -50,7 +50,7 @@ export const listAuditLogs = createServerFn({ method: "POST" })
     const ids = Array.from(
       new Set((rows ?? []).map((r: any) => r.user_id).filter(Boolean)),
     ) as string[];
-    let nameById = new Map<string, string>();
+    const nameById = new Map<string, string>();
     if (ids.length) {
       const { data: profiles } = await supabaseAdmin
         .from("profiles")
