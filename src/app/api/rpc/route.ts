@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { __fnRegistry } from "@/lib/tanstack-compat";
 
+// Force Node.js runtime (this route uses Node-specific modules: Supabase, crypto, fs)
+export const runtime = "nodejs";
+
 // Force dynamic import of all function modules so the registry is populated
 async function ensureRegistry() {
   if (__fnRegistry.size > 0) return;

@@ -38,5 +38,8 @@ build
 *.sln
 *.sw?
 
+# Deployment archives
+*.zip
+
 # TypeScript
 tsconfig.tsbuildinfo
