@@ -30,13 +30,34 @@ function createSupabaseClient(): Client | null {
 
 let _supabase: Client | null | undefined;
 
-// Graceful proxy: returns a stub that warns on any operation if client is missing.
-const stub = new Proxy({} as Client, {
-  get(_, prop) {
-    console.warn(`[Supabase] Cannot perform "${String(prop)}": Supabase client not initialized (missing env vars).`);
-    return () => Promise.resolve({ data: null, error: new Error('Supabase not configured') });
-  },
-});
+const ERR = new Error('Supabase not configured');
+
+// Recursive stub that handles all access patterns safely:
+//   const { data: sub } = supabase.auth.onAuthStateChange(cb)  — sync destructuring
+//   await supabase.from('t').select('*').eq('id',x).single()  — async chain
+//   supabase.auth.getSession().then(...)                       — .then() chain
+//   supabase.auth.getSession()                                 — bare call (no await)
+function makeStub(depth = 0): any {
+  if (depth > 5) return makeStub(0);
+  // Base value: callable, thenable, with .data/.error for direct destructure
+  const fn: any = () => makeStub(depth + 1);
+  fn.data = null;
+  fn.error = ERR;
+  fn.then = (resolve: any) => resolve({ data: null, error: ERR });
+  return new Proxy(fn, {
+    get(target, prop) {
+      // Yield the real values for these well-known props
+      if (prop === 'then') return target.then;
+      if (prop === 'data' || prop === 'error') return target[prop];
+      return makeStub(depth + 1);
+    },
+    apply(_target, _thisArg, _args) {
+      return makeStub(depth + 1);
+    },
+  });
+}
+
+const stub = makeStub();
 
 export const supabase = new Proxy({} as Client, {
   get(_, prop, receiver) {

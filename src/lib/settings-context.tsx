@@ -85,7 +85,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) load();
     });
-    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+    return () => { cancelled = true; sub?.subscription?.unsubscribe(); };
   }, [load]);
 
   return (

@@ -287,7 +287,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setScreen(u.role === "cashier" ? (u.role === "cashier" ? "open_shift" : "dashboard") : "dashboard");
       }
     })();
-    return () => sub.subscription.unsubscribe();
+    return () => sub?.subscription?.unsubscribe();
   }, []);
 
 

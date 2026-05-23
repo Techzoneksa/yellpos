@@ -7,6 +7,14 @@ import type { Database } from './types';
 
 type AdminClient = SupabaseClient<Database>;
 
+function detectKeyKind(key: string): "publishable" | "secret" | "legacy_jwt" | "unknown" {
+  if (key.startsWith("sb_publishable_")) return "publishable";
+  if (key.startsWith("sb_secret_")) return "secret";
+  if (key.startsWith("sb_")) return "unknown";
+  if (key.startsWith("eyJ")) return "legacy_jwt";
+  return "unknown";
+}
+
 function createSupabaseAdminClient(): AdminClient | null {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -20,6 +28,15 @@ function createSupabaseAdminClient(): AdminClient | null {
     return null;
   }
 
+  const kind = detectKeyKind(SUPABASE_SERVICE_ROLE_KEY);
+  if (kind === "publishable") {
+    console.error(`[SupabaseAdmin] SUPABASE_SERVICE_ROLE_KEY is a publishable key (starts with sb_publishable_). It CANNOT be used for admin operations. Use a secret key (sb_secret_...) or a legacy service_role JWT (eyJ...) instead.`);
+    return null;
+  }
+  if (kind === "unknown") {
+    console.warn(`[SupabaseAdmin] SUPABASE_SERVICE_ROLE_KEY has an unrecognised format. Admin operations may fail.`);
+  }
+
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
       storage: undefined,
@@ -29,23 +46,36 @@ function createSupabaseAdminClient(): AdminClient | null {
   });
 }
 
-let _supabaseAdmin: AdminClient | null | undefined;
+const ADMIN_ERR = new Error('SupabaseAdmin not configured');
 
-// Graceful stub for when env vars are missing.
-const adminStub = new Proxy({} as AdminClient, {
-  get(_, prop) {
-    console.warn(`[SupabaseAdmin] Cannot perform "${String(prop)}": admin client not initialized (missing env vars).`);
-    return () => Promise.resolve({ data: null, error: new Error('SupabaseAdmin not configured') });
-  },
-});
+function makeAdminStub(depth = 0): any {
+  if (depth > 5) return makeAdminStub(0);
+  const fn: any = () => makeAdminStub(depth + 1);
+  fn.data = null;
+  fn.error = ADMIN_ERR;
+  fn.then = (resolve: any) => resolve({ data: null, error: ADMIN_ERR });
+  return new Proxy(fn, {
+    get(target, prop) {
+      if (prop === 'then') return target.then;
+      if (prop === 'data' || prop === 'error') return target[prop];
+      return makeAdminStub(depth + 1);
+    },
+    apply(_target, _thisArg, _args) {
+      return makeAdminStub(depth + 1);
+    },
+  });
+}
+
+// Do NOT cache null — retry on every access so env-var changes take effect without restart
+const adminStub = makeAdminStub();
 
 // Server-side Supabase client with service role - bypasses RLS
 // SECURITY: Only use this for trusted server-side operations, never expose to client code
 // Import like: import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export const supabaseAdmin = new Proxy({} as AdminClient, {
   get(_, prop, receiver) {
-    if (!_supabaseAdmin) _supabaseAdmin = createSupabaseAdminClient();
-    if (!_supabaseAdmin) return Reflect.get(adminStub, prop, adminStub);
-    return Reflect.get(_supabaseAdmin, prop, receiver);
+    const client = createSupabaseAdminClient();
+    if (!client) return Reflect.get(adminStub, prop, adminStub);
+    return Reflect.get(client, prop, receiver);
   },
 });

@@ -44,7 +44,13 @@ export const bootstrapOwner = createServerFn({ method: "POST" })
         role: "owner",
       },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      const msg = error.message;
+      if (msg.includes("Bearer token") || msg.includes("valid key") || msg.includes("JWT")) {
+        throw new Error("Supabase admin key invalid or not accepted by Auth Admin. Use the legacy service_role JWT (eyJ...) from Project Settings → API Keys → Legacy keys, not a sb_secret_ or sb_publishable_ key.");
+      }
+      throw new Error(msg);
+    }
     const id = created.user!.id;
 
     await supabaseAdmin

@@ -123,7 +123,7 @@ export function NextAppProvider({ children }: { children: ReactNode }) {
         setScreen(u.role === "cashier" ? "open_shift" : "dashboard");
       }
     })();
-    return () => sub.subscription.unsubscribe();
+    return () => sub?.subscription?.unsubscribe();
   }, []);
 
   // Theme / lang side-effects
@@ -306,13 +306,14 @@ export function NextCatalogProvider({ children }: { children: ReactNode }) {
   }, [fetchCatalog]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then((result: any) => {
+      const session = result?.data?.session;
       if (session?.user) load();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) load();
     });
-    return () => sub.subscription.unsubscribe();
+    return () => sub?.subscription?.unsubscribe();
   }, [load]);
 
   const groupsForProduct = useCallback((productId: string) => {
@@ -350,13 +351,14 @@ export function NextSettingsProvider({ children }: { children: ReactNode }) {
   }, [fetchSettings]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then((result: any) => {
+      const session = result?.data?.session;
       if (session?.user) load();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) load();
     });
-    return () => sub.subscription.unsubscribe();
+    return () => sub?.subscription?.unsubscribe();
   }, [load]);
 
   return (

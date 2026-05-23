@@ -122,6 +122,11 @@ begin
   v_full_name := coalesce(new.raw_user_meta_data->>'full_name', '');
   v_role := coalesce((new.raw_user_meta_data->>'role')::public.app_role, 'cashier'::public.app_role);
 
+  -- Check if profile already exists (skip if manually created)
+  if exists (select 1 from public.profiles where id = new.id) then
+    return new;
+  end if;
+
   -- ensure username uniqueness fallback
   if exists (select 1 from public.profiles where username = v_username) then
     v_username := v_username || '_' || substr(new.id::text, 1, 6);
