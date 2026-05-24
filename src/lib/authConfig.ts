@@ -21,24 +21,47 @@ function isStubError(err: any): boolean {
   return err?.message === STUB_ERR || (typeof err === "string" && err === STUB_ERR);
 }
 
-async function loadSessionUser(userId: string): Promise<SessionUser | null> {
-  const [{ data: profile }, { data: roleRows }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, username, active").eq("id", userId).maybeSingle(),
-    supabase.from("user_roles").select("role").eq("user_id", userId),
-  ]);
-  if (!profile) return null;
-  if (!profile.active) {
+async function fetchMySession(): Promise<SessionUser | null> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData?.session ?? null;
+  if (!session) throw new Error("Session missing after login");
+
+  const res = await fetch("/api/my-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken: session.access_token }),
+  });
+
+  const result = await res.json();
+
+  if (!res.ok) {
+    const msg = result?.error || "Role lookup failed";
+    if (msg.includes("Invalid session") || msg.includes("Access token")) {
+      throw new Error("Session expired or invalid, please login again");
+    }
+    throw new Error(msg);
+  }
+
+  if (!result.profile) {
+    return null;
+  }
+
+  if (!result.profile.active) {
     await supabase.auth.signOut();
     throw new Error("Account disabled");
   }
-  const role = (roleRows?.[0]?.role ?? "cashier") as AppRole;
-  const { data: auth } = await supabase.auth.getUser();
+
+  if (!result.role) {
+    await supabase.auth.signOut();
+    throw new Error("No role assigned to this user");
+  }
+
   return {
-    id: profile.id,
-    fullName: profile.full_name,
-    username: profile.username,
-    email: auth.user?.email ?? null,
-    role,
+    id: result.profile.id,
+    fullName: result.profile.full_name,
+    username: result.profile.username,
+    email: result.email ?? null,
+    role: result.role as AppRole,
   };
 }
 
@@ -53,7 +76,7 @@ export async function signInCashier(username: string, pin: string): Promise<Sess
     if (error?.status === 400 || error?.status === 401) throw new Error("Password is incorrect or not synced with Supabase Auth");
     throw new Error("Invalid credentials");
   }
-  const u = await loadSessionUser(data.user.id);
+  const u = await fetchMySession();
   if (!u) throw new Error("Profile missing");
   if (u.role !== "cashier") {
     await supabase.auth.signOut();
@@ -74,7 +97,7 @@ export async function signInAdmin(email: string, password: string): Promise<Sess
     if (error?.status === 400 || error?.status === 401) throw new Error("Password is incorrect or not synced with Supabase Auth");
     throw new Error("Invalid credentials");
   }
-  const u = await loadSessionUser(data.user.id);
+  const u = await fetchMySession();
   if (!u) throw new Error("Login succeeded but role lookup failed");
   if (u.role === "cashier") {
     await supabase.auth.signOut();
@@ -93,7 +116,7 @@ export async function getCurrentSessionUser(): Promise<SessionUser | null> {
     const sessionResult = await supabase.auth.getSession();
     const session = sessionResult?.data?.session ?? null;
     if (!session?.user) return null;
-    return await loadSessionUser(session.user.id);
+    return await fetchMySession();
   } catch {
     return null;
   }
