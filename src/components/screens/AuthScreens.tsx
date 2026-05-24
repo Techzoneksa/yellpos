@@ -134,10 +134,7 @@ export function POSLoginScreen() {
       const acc = await signInCashier(u.trim(), p);
       signIn(acc.fullName || acc.username, "cashier");
     } catch (ex: any) {
-      setErr(ar ? "بيانات الدخول غير صحيحة" : "Invalid login credentials");
-      if (ex?.message === "Account disabled") {
-        setErr(ar ? "تم تعطيل هذا الحساب" : "Account disabled");
-      }
+      setErr(ex?.message || (ar ? "بيانات الدخول غير صحيحة" : "Invalid login credentials"));
     } finally {
       setBusy(false);
     }
@@ -208,10 +205,7 @@ export function DashboardLoginScreen() {
       const acc = await signInAdmin(u.trim(), p);
       signIn(acc.fullName || acc.username, acc.role);
     } catch (ex: any) {
-      setErr(ar ? "بيانات الدخول غير صحيحة" : "Invalid login credentials");
-      if (ex?.message === "Account disabled") {
-        setErr(ar ? "تم تعطيل هذا الحساب" : "Account disabled");
-      }
+      setErr(ex?.message || (ar ? "بيانات الدخول غير صحيحة" : "Invalid login credentials"));
     } finally {
       setBusy(false);
     }

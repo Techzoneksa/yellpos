@@ -15,6 +15,12 @@ function cashierEmail(username: string) {
   return `${username.trim().toLowerCase()}@pos.local`;
 }
 
+const STUB_ERR = "Supabase not configured";
+
+function isStubError(err: any): boolean {
+  return err?.message === STUB_ERR || (typeof err === "string" && err === STUB_ERR);
+}
+
 async function loadSessionUser(userId: string): Promise<SessionUser | null> {
   const [{ data: profile }, { data: roleRows }] = await Promise.all([
     supabase.from("profiles").select("id, full_name, username, active").eq("id", userId).maybeSingle(),
@@ -41,7 +47,12 @@ export async function signInCashier(username: string, pin: string): Promise<Sess
     email: cashierEmail(username),
     password: pin,
   });
-  if (error || !data.user) throw new Error("Invalid credentials");
+  if (isStubError(error)) throw new Error("Supabase client not configured — check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are set during build");
+  if (error || !data.user) {
+    if (error?.message?.includes("Email not confirmed")) throw new Error("Email not confirmed");
+    if (error?.status === 400 || error?.status === 401) throw new Error("Password is incorrect or not synced with Supabase Auth");
+    throw new Error("Invalid credentials");
+  }
   const u = await loadSessionUser(data.user.id);
   if (!u) throw new Error("Profile missing");
   if (u.role !== "cashier") {
@@ -57,9 +68,14 @@ export async function signInAdmin(email: string, password: string): Promise<Sess
     email: email.trim(),
     password,
   });
-  if (error || !data.user) throw new Error("Invalid credentials");
+  if (isStubError(error)) throw new Error("Supabase client not configured — check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are set during build");
+  if (error || !data.user) {
+    if (error?.message?.includes("Email not confirmed")) throw new Error("Email not confirmed");
+    if (error?.status === 400 || error?.status === 401) throw new Error("Password is incorrect or not synced with Supabase Auth");
+    throw new Error("Invalid credentials");
+  }
   const u = await loadSessionUser(data.user.id);
-  if (!u) throw new Error("Profile missing");
+  if (!u) throw new Error("Login succeeded but role lookup failed");
   if (u.role === "cashier") {
     await supabase.auth.signOut();
     throw new Error("Use POS login for cashiers");
@@ -73,10 +89,11 @@ export async function signOut() {
 }
 
 export async function getCurrentSessionUser(): Promise<SessionUser | null> {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session?.user) return null;
   try {
-    return await loadSessionUser(data.session.user.id);
+    const sessionResult = await supabase.auth.getSession();
+    const session = sessionResult?.data?.session ?? null;
+    if (!session?.user) return null;
+    return await loadSessionUser(session.user.id);
   } catch {
     return null;
   }
