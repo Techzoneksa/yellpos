@@ -1,7 +1,7 @@
 // Production server for Hostinger Node.js hosting.
-// Reads PORT from environment (Hostinger provides this dynamically).
-const { createServer } = require("http");
-const next = require("next");
+// Uses ES module syntax (project has "type": "module").
+import { createServer } from "http";
+import next from "next";
 
 const port = parseInt(process.env.PORT || "3000", 10);
 const hostname = "0.0.0.0";
