@@ -8,7 +8,7 @@ set -e
 echo "=== 1. Fix file permissions ==="
 find . -type d -exec chmod 755 {} \;
 find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.mjs" -o -name "*.cjs" -o -name "*.json" -o -name "*.css" -o -name "*.svg" -o -name "*.png" -o -name "*.ico" -o -name "*.txt" -o -name "*.md" -o -name "*.yml" -o -name "*.yaml" -o -name "*.example" \) -exec chmod 644 {} \;
-chmod 755 deploy.sh server.js 2>/dev/null || true
+chmod 755 deploy.sh 2>/dev/null || true
 
 echo "=== 2. Clear stale cache ==="
 rm -rf .next

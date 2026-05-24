@@ -5,11 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "node server.js",
+    "start": "next start",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "hostinger-build": "chmod -R 755 . && npm ci && npm run build",
-    "hostinger-start": "node server.js"
+    "hostinger-build": "chmod -R 755 . && npm ci && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
