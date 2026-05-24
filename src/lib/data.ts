@@ -18,13 +18,6 @@ export const COMPANY = {
   vatNumber: "300000000000003",
 };
 
-// This CASHIERS data is unused (replaced by INITIAL_USERS in phase2Data.ts).
-// Kept for reference only; PINs intentionally omitted — seed from env vars only.
-export const CASHIERS = [
-  { id: "u1", username: "cashier1", name: "أحمد العتيبي", role: "cashier" as const },
-  { id: "u2", username: "manager", name: "خالد الحربي", role: "manager" as const },
-];
-
 export const CATEGORIES = [
   { id: "broasted", ar: "بروستد", en: "Broasted" },
   { id: "clubs", ar: "كلوب", en: "Clubs" },

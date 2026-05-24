@@ -16,12 +16,11 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 async function main() {
-  const email = "aabanurs@gmail.com";
-  const password = "Sultan2030@%_Y";
-  const username = "sultan";
-  const fullName = "Sultan";
+  const email = process.env.SEED_OWNER_EMAIL || "aabanurs@gmail.com";
+  const password = process.env.SEED_OWNER_PASSWORD || "Sultan2030@%_Y";
+  const username = process.env.SEED_OWNER_USERNAME || "sultan";
+  const fullName = process.env.SEED_OWNER_FULLNAME || "Sultan";
 
-  // 1. Check if user already exists
   const { data: existing } = await supabase
     .from("profiles")
     .select("id")
@@ -32,7 +31,6 @@ async function main() {
     return;
   }
 
-  // 2. Create auth user
   console.log("Creating auth user...");
   const { data: created, error } = await supabase.auth.admin.createUser({
     email,
@@ -51,14 +49,12 @@ async function main() {
   const id = created.user.id;
   console.log(`Auth user created: ${id}`);
 
-  // 3. Update profile (trigger already inserted row)
   const { error: pErr } = await supabase
     .from("profiles")
     .update({ full_name: fullName, username, active: true })
     .eq("id", id);
   if (pErr) console.warn("Profile update warning:", pErr.message);
 
-  // 4. Set role to owner
   const { error: dErr } = await supabase.from("user_roles").delete().eq("user_id", id);
   if (dErr) console.warn("Role delete warning:", dErr.message);
 
