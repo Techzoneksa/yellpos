@@ -1,16 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function HomePage() {
+  const [redirecting, setRedirecting] = useState(false);
+
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    const params = new URLSearchParams(hash);
-    if (params.get("type") === "recovery" && params.get("access_token")) {
-      window.location.replace("/reset-password" + window.location.hash);
+    const hash = window.location.hash || "";
+    const raw = hash.replace(/^#/, "");
+    const params = new URLSearchParams(raw);
+
+    const type = params.get("type");
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    const errorCode = params.get("error_code");
+
+    const isRecovery = type === "recovery" && accessToken && refreshToken;
+    const isExpired = errorCode === "otp_expired" || params.get("error") === "otp_expired";
+
+    if (isRecovery || isExpired) {
+      setRedirecting(true);
+      window.location.replace("/reset-password" + hash);
     }
   }, []);
+
+  if (redirecting) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground">جاري تحويلك إلى صفحة تغيير كلمة المرور...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
