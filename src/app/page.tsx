@@ -1,6 +1,17 @@
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
 
 export default function HomePage() {
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    const params = new URLSearchParams(hash);
+    if (params.get("type") === "recovery" && params.get("access_token")) {
+      window.location.replace("/reset-password" + window.location.hash);
+    }
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">

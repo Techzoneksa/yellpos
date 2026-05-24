@@ -8,6 +8,7 @@ import { COMPANY } from "@/lib/data";
 import { COMPANY_LEGAL } from "@/lib/phase2Data";
 import { signInCashier, signInAdmin } from "@/lib/authConfig";
 import { bootstrapOwner, bootstrapStatus } from "@/lib/bootstrap.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 /* ─────────── Password toggle input ─────────── */
 function PasswordInput({ value, onChange, inputMode, className, id }: {
@@ -242,6 +243,29 @@ export function DashboardLoginScreen() {
             <Button type="submit" disabled={busy} className="h-12 w-full text-base font-semibold">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : (ar ? "دخول" : "Sign in")}
             </Button>
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={async () => {
+                  const email = u.trim();
+                  if (!email) { setErr(ar ? "أدخل البريد الإلكتروني أولاً" : "Enter your email first"); return; }
+                  setBusy(true);
+                  setErr("");
+                  try {
+                    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
+                      redirectTo: "https://crmprom.com/reset-password",
+                    });
+                    if (resetErr) throw new Error(resetErr.message);
+                    setErr(ar ? "تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني" : "Reset link sent to your email");
+                  } catch (ex: any) {
+                    setErr(ex?.message || (ar ? "فشل إرسال رابط إعادة التعيين" : "Failed to send reset link"));
+                  } finally { setBusy(false); }
+                }}
+                className="mt-2 text-xs text-primary hover:underline"
+              >
+                {ar ? "نسيت كلمة المرور؟" : "Forgot password?"}
+              </button>
+            </div>
           </form>
         </div>
       </div>
