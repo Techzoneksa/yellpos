@@ -18,44 +18,96 @@ function PasswordInput({ value, onChange, id }: { value: string; onChange: (v: s
   );
 }
 
+type Step = "loading" | "expired" | "invalid" | "ready" | "done";
+
 export default function ResetPasswordPage() {
-  const [step, setStep] = useState<"parsing" | "expired" | "invalid" | "ready" | "done">("parsing");
+  const [step, setStep] = useState<Step>("loading");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    const params = new URLSearchParams(hash);
+    let finalTimeout: ReturnType<typeof setTimeout>;
+    let subscription: { subscription?: { unsubscribe: () => void } } | null = null;
 
-    const type = params.get("type");
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-    const error = params.get("error");
-
-    if (error === "otp_expired") {
-      setStep("expired");
-      return;
-    }
-
-    if (type !== "recovery" || !accessToken || !refreshToken) {
+    const markInvalid = () => {
       setStep("invalid");
-      return;
-    }
+    };
 
-    supabase.auth
-      .setSession({ access_token: accessToken, refresh_token: refreshToken })
-      .then(({ error: sessionErr }) => {
-        if (sessionErr) {
-          setStep("invalid");
-        } else {
-          setStep("ready");
+    const activateForm = () => {
+      setStep("ready");
+    };
+
+    const checkHashAndSetSession = () => {
+      const hash = window.location.hash.slice(1);
+      if (!hash) return false;
+      const params = new URLSearchParams(hash);
+      const type = params.get("type");
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+      const error = params.get("error");
+
+      if (error === "otp_expired") {
+        setStep("expired");
+        return true;
+      }
+
+      if (type === "recovery" && accessToken && refreshToken) {
+        supabase.auth
+          .setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ error: sessionErr }) => {
+            if (!sessionErr) activateForm();
+          });
+        return true;
+      }
+      return false;
+    };
+
+    const checkCodeParam = (): boolean => {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      if (code) {
+        supabase.auth.getSession().then(({ data }) => {
+          if (data?.session) activateForm();
+        });
+        return true;
+      }
+      return false;
+    };
+
+    (async () => {
+      // Step 1: Subscribe to PASSWORD_RECOVERY auth event
+      const { data: authData } = await supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "PASSWORD_RECOVERY" && session) {
+          activateForm();
         }
-      })
-      .catch(() => {
-        setStep("invalid");
       });
+      subscription = authData;
+
+      // Step 2: Check for active recovery session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        activateForm();
+        return;
+      }
+
+      // Step 3: Check URL hash tokens (legacy ?#hash format)
+      if (checkHashAndSetSession()) return;
+
+      // Step 4: Check ?code= query param
+      if (checkCodeParam()) return;
+
+      // Step 5: Wait up to 3 seconds for PASSWORD_RECOVERY event to fire
+      finalTimeout = setTimeout(() => {
+        markInvalid();
+      }, 3000);
+    })();
+
+    return () => {
+      clearTimeout(finalTimeout);
+      subscription?.subscription?.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,10 +139,10 @@ export default function ResetPasswordPage() {
     }
   };
 
-  if (step === "parsing") {
+  if (step === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-muted-foreground">جاري التحقق من الرابط...</p>
+        <p className="text-muted-foreground">جاري التحقق من رابط إعادة تعيين كلمة المرور...</p>
       </div>
     );
   }
