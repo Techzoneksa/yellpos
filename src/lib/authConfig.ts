@@ -26,34 +26,48 @@ async function fetchMySession(): Promise<SessionUser | null> {
   const session = sessionData?.session ?? null;
   if (!session) throw new Error("Session missing after login");
 
-  const res = await fetch("/api/my-session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accessToken: session.access_token }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
-  const result = await res.json();
+  let res: Response;
+  try {
+    res = await fetch("/api/my-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken: session.access_token }),
+      signal: controller.signal,
+    });
+  } catch (fetchErr: any) {
+    clearTimeout(timeout);
+    if (fetchErr?.name === "AbortError") {
+      throw new Error("انتهت مهلة الاتصال بالخادم");
+    }
+    throw new Error("تعذر الاتصال بالخادم");
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const result = await res.json().catch(() => ({ error: "Invalid response from server" }));
 
   if (!res.ok) {
     const msg = result?.error || "Role lookup failed";
-    if (msg.includes("Invalid session") || msg.includes("Access token")) {
-      throw new Error("Session expired or invalid, please login again");
+    if (msg.includes("Invalid session") || msg.includes("Access token") || msg.includes("expired")) {
+      throw new Error("انتهت الجلسة، يرجى تسجيل الدخول مجددًا");
     }
     throw new Error(msg);
   }
 
   if (!result.profile) {
-    return null;
+    throw new Error("تعذر جلب بيانات الحساب");
   }
 
   if (!result.profile.active) {
     await supabase.auth.signOut();
-    throw new Error("Account disabled");
+    throw new Error("الحساب غير مفعل");
   }
 
   if (!result.role) {
-    await supabase.auth.signOut();
-    throw new Error("No role assigned to this user");
+    throw new Error("لا يوجد دور مسجل لهذا المستخدم");
   }
 
   return {
@@ -93,15 +107,15 @@ export async function signInAdmin(email: string, password: string): Promise<Sess
   });
   if (isStubError(error)) throw new Error("Supabase client not configured — check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are set during build");
   if (error || !data.user) {
-    if (error?.message?.includes("Email not confirmed")) throw new Error("Email not confirmed");
-    if (error?.status === 400 || error?.status === 401) throw new Error("Password is incorrect or not synced with Supabase Auth");
-    throw new Error("Invalid credentials");
+    if (error?.message?.includes("Email not confirmed")) throw new Error("البريد الإلكتروني غير مؤكد");
+    if (error?.status === 400 || error?.status === 401) throw new Error("كلمة المرور غير صحيحة");
+    throw new Error("بيانات الدخول غير صحيحة");
   }
   const u = await fetchMySession();
   if (!u) throw new Error("Login succeeded but role lookup failed");
   if (u.role === "cashier") {
     await supabase.auth.signOut();
-    throw new Error("Use POS login for cashiers");
+    throw new Error("الرجاء استخدام دخول الكاشير");
   }
   await supabase.from("profiles").update({ last_login: new Date().toISOString() }).eq("id", u.id);
   return u;

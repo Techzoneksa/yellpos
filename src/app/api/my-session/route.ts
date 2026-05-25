@@ -28,17 +28,32 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   const { accessToken } = body || {};
   if (!accessToken || typeof accessToken !== "string") {
-    return Response.json({ error: "Access token required" }, { status: 400 });
+    return Response.json({ error: "Access token required" }, { status: 401 });
   }
 
-  const { data: authData, error: authErr } = await supabaseAdmin.auth.getUser(accessToken);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  let authData: any;
+  let authErr: any;
+  try {
+    const result = await supabaseAdmin.auth.getUser(accessToken);
+    authData = result.data;
+    authErr = result.error;
+  } catch (e: any) {
+    clearTimeout(timeout);
+    return Response.json({ error: "Auth service unavailable" }, { status: 503 });
+  } finally {
+    clearTimeout(timeout);
+  }
+
   if (authErr || !authData?.user) {
-    return Response.json({ error: authErr?.message || "Invalid session" }, { status: 401 });
+    return Response.json({ error: authErr?.message || "Invalid or expired session" }, { status: 401 });
   }
 
   const user = authData.user;
