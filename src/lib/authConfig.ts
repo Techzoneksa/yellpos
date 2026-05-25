@@ -27,7 +27,7 @@ async function fetchMySession(): Promise<SessionUser | null> {
   if (!session) throw new Error("Session missing after login");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
   let res: Response;
   try {
